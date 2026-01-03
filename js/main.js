@@ -5,11 +5,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize all components
     initHeader();
-    initMobileMenu();
+    initNavDropdown();
+    initScrollToTop();
     initScrollAnimations();
     initCarousels();
     initParticles();
-    initScrollToTop();
 });
 
 /* ========================================
@@ -35,80 +35,165 @@ function initHeader() {
 }
 
 /* ========================================
-   Mobile Menu
+   Navigation Dropdown
    ======================================== */
-function initMobileMenu() {
-    const toggle = document.querySelector('.mobile-toggle');
-    const menu = document.querySelector('.nav-menu');
+function initNavDropdown() {
+    const toggle = document.querySelector('.nav-toggle');
+    const menuWrapper = document.querySelector('.nav-menu-wrapper');
     
-    if (!toggle || !menu) return;
+    if (!toggle || !menuWrapper) return;
     
-    // Create overlay element
-    let overlay = document.querySelector('.mobile-menu-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.className = 'mobile-menu-overlay';
-        document.body.appendChild(overlay);
-    }
+    // Prevent duplicate initialization
+    if (toggle._navDropdownInitialized) return;
+    toggle._navDropdownInitialized = true;
     
-    function toggleMenu() {
-        const isActive = menu.classList.contains('active');
-        menu.classList.toggle('active');
-        overlay.classList.toggle('active');
-        toggle.innerHTML = isActive 
-            ? '<i class="fas fa-bars"></i>' 
-            : '<i class="fas fa-times"></i>';
+    function toggleMenu(e) {
+        e.preventDefault();
+        e.stopPropagation();
         
-        // Prevent body scroll when menu is open
-        if (!isActive) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+        const newState = !isExpanded;
+        
+        toggle.setAttribute('aria-expanded', newState);
+        menuWrapper.classList.toggle('active', newState);
     }
     
+    // Toggle on button click
     toggle.addEventListener('click', toggleMenu);
     
-    // Close menu when clicking overlay
-    overlay.addEventListener('click', () => {
-        menu.classList.remove('active');
-        overlay.classList.remove('active');
-        toggle.innerHTML = '<i class="fas fa-bars"></i>';
-        document.body.style.overflow = '';
-    });
+    // Close when clicking outside
+    const outsideClickHandler = (e) => {
+        if (menuWrapper.classList.contains('active') && 
+            !menuWrapper.contains(e.target) && 
+            !toggle.contains(e.target)) {
+            toggle.setAttribute('aria-expanded', 'false');
+            menuWrapper.classList.remove('active');
+        }
+    };
+    document.addEventListener('click', outsideClickHandler);
     
-    // Close menu when clicking a link
-    menu.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', () => {
-            menu.classList.remove('active');
-            overlay.classList.remove('active');
-            toggle.innerHTML = '<i class="fas fa-bars"></i>';
-            document.body.style.overflow = '';
+    // Close on escape key
+    const escapeKeyHandler = (e) => {
+        if (e.key === 'Escape' && menuWrapper.classList.contains('active')) {
+            toggle.setAttribute('aria-expanded', 'false');
+            menuWrapper.classList.remove('active');
+            toggle.focus();
+        }
+    };
+    document.addEventListener('keydown', escapeKeyHandler);
+    
+    // Close when clicking a link
+    const menu = menuWrapper.querySelector('.nav-menu');
+    if (menu) {
+        menu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                toggle.setAttribute('aria-expanded', 'false');
+                menuWrapper.classList.remove('active');
+            });
         });
-    });
+    }
+}
+
+/* ========================================
+   Scroll to Top Button
+   ======================================== */
+function initScrollToTop() {
+    // Check if button already exists
+    let scrollBtn = document.querySelector('.scroll-top-btn');
     
-    // Close menu when clicking outside (but not on toggle)
-    document.addEventListener('click', (e) => {
-        if (menu.classList.contains('active') && 
-            !menu.contains(e.target) && 
-            !toggle.contains(e.target) &&
-            !overlay.contains(e.target)) {
-            menu.classList.remove('active');
-            overlay.classList.remove('active');
-            toggle.innerHTML = '<i class="fas fa-bars"></i>';
-            document.body.style.overflow = '';
-        }
-    });
+    if (!scrollBtn) {
+        // Create scroll to top button
+        scrollBtn = document.createElement('button');
+        scrollBtn.className = 'scroll-top-btn';
+        scrollBtn.setAttribute('aria-label', 'Scroll to top');
+        scrollBtn.setAttribute('title', 'Scroll to top');
+        scrollBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+        document.body.appendChild(scrollBtn);
+    }
     
-    // Close menu on escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && menu.classList.contains('active')) {
-            menu.classList.remove('active');
-            overlay.classList.remove('active');
-            toggle.innerHTML = '<i class="fas fa-bars"></i>';
-            document.body.style.overflow = '';
+    // Check for reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    // Show/hide button based on scroll position
+    let isVisible = false;
+    const scrollThreshold = 300;
+    
+    function updateButtonVisibility() {
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
+        const shouldShow = scrollY > scrollThreshold;
+        
+        if (shouldShow !== isVisible) {
+            isVisible = shouldShow;
+            if (isVisible) {
+                scrollBtn.classList.add('show');
+            } else {
+                scrollBtn.classList.remove('show');
+            }
         }
-    });
+    }
+    
+    // Throttle scroll events for performance
+    let ticking = false;
+    function onScroll() {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                updateButtonVisibility();
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }
+    
+    // Scroll to top function
+    function scrollToTop(e) {
+        if (e) {
+            e.preventDefault();
+        }
+        
+        const scrollOptions = {
+            top: 0,
+            left: 0,
+            behavior: prefersReducedMotion ? 'auto' : 'smooth'
+        };
+        
+        if ('scrollBehavior' in document.documentElement.style) {
+            window.scrollTo(scrollOptions);
+        } else {
+            window.scrollTo(0, 0);
+        }
+        
+        scrollBtn.blur();
+    }
+    
+    // Remove existing listeners if any
+    if (scrollBtn._scrollHandler) {
+        window.removeEventListener('scroll', scrollBtn._scrollHandler, { passive: true });
+    }
+    if (scrollBtn._clickHandler) {
+        scrollBtn.removeEventListener('click', scrollBtn._clickHandler);
+    }
+    if (scrollBtn._keyHandler) {
+        scrollBtn.removeEventListener('keydown', scrollBtn._keyHandler);
+    }
+    
+    // Store handlers for cleanup
+    scrollBtn._scrollHandler = onScroll;
+    scrollBtn._clickHandler = scrollToTop;
+    scrollBtn._keyHandler = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            scrollToTop(e);
+        }
+    };
+    
+    // Event listeners
+    scrollBtn.addEventListener('click', scrollBtn._clickHandler);
+    scrollBtn.addEventListener('keydown', scrollBtn._keyHandler);
+    window.addEventListener('scroll', scrollBtn._scrollHandler, { passive: true });
+    
+    // Initial check
+    updateButtonVisibility();
+    window.addEventListener('load', updateButtonVisibility);
 }
 
 /* ========================================
@@ -306,99 +391,4 @@ function initPageTransitions() {
 
 // Initialize page transitions
 document.addEventListener('DOMContentLoaded', initPageTransitions);
-
-/* ========================================
-   Scroll to Top Button - Best Practices
-   ======================================== */
-function initScrollToTop() {
-    // Check if button already exists to prevent duplicates
-    let scrollBtn = document.querySelector('.scroll-to-top');
-    
-    if (!scrollBtn) {
-        // Create scroll-to-top button
-        scrollBtn = document.createElement('button');
-        scrollBtn.className = 'scroll-to-top';
-        scrollBtn.setAttribute('aria-label', 'Scroll to top');
-        scrollBtn.setAttribute('title', 'Scroll to top');
-        scrollBtn.innerHTML = '<i class="fas fa-chevron-up" aria-hidden="true"></i>';
-        
-        // Ensure it's appended directly to body (not inside any container)
-        document.body.appendChild(scrollBtn);
-        
-        // Force fixed positioning with inline styles as backup
-        scrollBtn.style.position = 'fixed';
-        scrollBtn.style.bottom = '2rem';
-        scrollBtn.style.right = '2rem';
-        scrollBtn.style.zIndex = '9998';
-    }
-    
-    // Check for reduced motion preference
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    
-    // Throttle function for scroll events (performance optimization)
-    let ticking = false;
-    const scrollThreshold = 400; // Show button after scrolling 400px
-    
-    function updateScrollButton() {
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-        
-        if (scrollY > scrollThreshold) {
-            scrollBtn.classList.add('visible');
-        } else {
-            scrollBtn.classList.remove('visible');
-        }
-        
-        ticking = false;
-    }
-    
-    function onScroll() {
-        if (!ticking) {
-            window.requestAnimationFrame(updateScrollButton);
-            ticking = true;
-        }
-    }
-    
-    // Scroll to top function
-    function scrollToTop() {
-        const scrollOptions = {
-            top: 0,
-            behavior: prefersReducedMotion ? 'auto' : 'smooth'
-        };
-        
-        // Use scrollTo with smooth behavior, fallback for older browsers
-        if ('scrollBehavior' in document.documentElement.style) {
-            window.scrollTo(scrollOptions);
-        } else {
-            // Fallback for browsers that don't support smooth scroll
-            window.scrollTo(0, 0);
-        }
-        
-        // Remove focus after scrolling (accessibility)
-        scrollBtn.blur();
-    }
-    
-    // Click event
-    scrollBtn.addEventListener('click', scrollToTop);
-    
-    // Keyboard support (Enter and Space keys)
-    scrollBtn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            scrollToTop();
-        }
-    });
-    
-    // Listen to scroll events with passive listener (performance)
-    window.addEventListener('scroll', onScroll, { passive: true });
-    
-    // Initial check
-    updateScrollButton();
-    
-    // Handle resize events to recalculate position if needed
-    let resizeTimer;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(updateScrollButton, 150);
-    }, { passive: true });
-}
 
