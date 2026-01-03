@@ -239,14 +239,13 @@ section {
    Header & Navigation
    ======================================== */
 .header {
-  position: relative;
+  position: sticky;
+  top: 0;
   width: 100%;
   z-index: 9999;
   padding: 20px 0;
   transition: var(--transition-normal);
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-primary);
   border-bottom: var(--border-subtle);
   pointer-events: auto;
 }
@@ -1533,6 +1532,7 @@ section {
    Footer
    ======================================== */
 .footer {
+  position: relative;
   background: var(--bg-secondary);
   border-top: var(--border-subtle);
   padding: 60px 0 30px;
