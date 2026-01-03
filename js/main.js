@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize all components
     initHeader();
     initNavDropdown();
-    initScrollToTop();
     initScrollAnimations();
     initCarousels();
     initParticles();
@@ -92,108 +91,6 @@ function initNavDropdown() {
             });
         });
     }
-}
-
-/* ========================================
-   Scroll to Top Button
-   ======================================== */
-function initScrollToTop() {
-    // Check if button already exists
-    let scrollBtn = document.querySelector('.scroll-top-btn');
-    
-    if (!scrollBtn) {
-        // Create scroll to top button
-        scrollBtn = document.createElement('button');
-        scrollBtn.className = 'scroll-top-btn';
-        scrollBtn.setAttribute('aria-label', 'Scroll to top');
-        scrollBtn.setAttribute('title', 'Scroll to top');
-        scrollBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
-        document.body.appendChild(scrollBtn);
-    }
-    
-    // Check for reduced motion preference
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    
-    // Show/hide button based on scroll position
-    let isVisible = false;
-    const scrollThreshold = 300;
-    
-    function updateButtonVisibility() {
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
-        const shouldShow = scrollY > scrollThreshold;
-        
-        if (shouldShow !== isVisible) {
-            isVisible = shouldShow;
-            if (isVisible) {
-                scrollBtn.classList.add('show');
-            } else {
-                scrollBtn.classList.remove('show');
-            }
-        }
-    }
-    
-    // Throttle scroll events for performance
-    let ticking = false;
-    function onScroll() {
-        if (!ticking) {
-            window.requestAnimationFrame(() => {
-                updateButtonVisibility();
-                ticking = false;
-            });
-            ticking = true;
-        }
-    }
-    
-    // Scroll to top function
-    function scrollToTop(e) {
-        if (e) {
-            e.preventDefault();
-        }
-        
-        const scrollOptions = {
-            top: 0,
-            left: 0,
-            behavior: prefersReducedMotion ? 'auto' : 'smooth'
-        };
-        
-        if ('scrollBehavior' in document.documentElement.style) {
-            window.scrollTo(scrollOptions);
-        } else {
-            window.scrollTo(0, 0);
-        }
-        
-        scrollBtn.blur();
-    }
-    
-    // Remove existing listeners if any
-    if (scrollBtn._scrollHandler) {
-        window.removeEventListener('scroll', scrollBtn._scrollHandler, { passive: true });
-    }
-    if (scrollBtn._clickHandler) {
-        scrollBtn.removeEventListener('click', scrollBtn._clickHandler);
-    }
-    if (scrollBtn._keyHandler) {
-        scrollBtn.removeEventListener('keydown', scrollBtn._keyHandler);
-    }
-    
-    // Store handlers for cleanup
-    scrollBtn._scrollHandler = onScroll;
-    scrollBtn._clickHandler = scrollToTop;
-    scrollBtn._keyHandler = (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            scrollToTop(e);
-        }
-    };
-    
-    // Event listeners
-    scrollBtn.addEventListener('click', scrollBtn._clickHandler);
-    scrollBtn.addEventListener('keydown', scrollBtn._keyHandler);
-    window.addEventListener('scroll', scrollBtn._scrollHandler, { passive: true });
-    
-    // Initial check
-    updateButtonVisibility();
-    window.addEventListener('load', updateButtonVisibility);
 }
 
 /* ========================================
